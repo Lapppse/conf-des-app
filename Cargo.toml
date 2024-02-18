@@ -1,0 +1,19 @@
+[package]
+name = "des-app-rs"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "app"
+path = "src/main.rs"
+
+[[bin]]
+name = "console-app"
+path = "src/console_main.rs"
+
+[dependencies]
+des-ndtp = { git = "https://github.com/Lapppse/des-ndtp.git" }
+
+bitvec = { git = "https://github.com/ferrilab/bitvec" }
+miette = { version = "7.0.0", features = ["fancy"] }
+iced = { git = "https://github.com/iced-rs/iced.git", features = ["debug", "tokio", "wgpu", "lazy"] }

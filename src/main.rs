@@ -2,7 +2,7 @@
 
 use bitvec::prelude::*;
 use des_ndtp::{Block, Error, FromHexStr, MainKey, ToHexString};
-use iced::widget::{button, column, container, horizontal_space, row, text, text_input};
+use iced::widget::{button, column, container, row, text, text_input, Space};
 use iced::{
     executor, window, Alignment, Application, Command, Element, Length, Settings, Size, Theme,
 };
@@ -36,7 +36,7 @@ pub enum Message {
         input: String,
         input_type: InputType,
     },
-    EncodedTextComputed(BitVec),
+    EncodedTextComputed((BitVec, time::Duration)),
     ChangeTheme,
     Ignore(String),
 }
@@ -52,18 +52,20 @@ pub struct DesApp {
     iv_input: String,
     theme: Theme,
     error: (Option<Error>, Option<Error>, Option<Error>),
+    encode_time: Option<time::Duration>,
 }
 
-async fn encode(input: BitVec, key: MainKey, iv: Block) -> BitVec {
+async fn encode(input: BitVec, key: MainKey, iv: Block) -> (BitVec, time::Duration) {
+    let start = time::OffsetDateTime::now_utc();
     let iv = iv.encode(&key).unwrap().into_bitvec();
     let mut output: BitVec<usize, bitvec::order::LocalBits> = BitVec::with_capacity(input.len());
     let input = input.chunks(64);
     for chunk in input {
         let mut new_chunk = chunk.to_bitvec();
-        new_chunk ^= iv.clone();
+        new_chunk ^= &iv;
         output.extend(new_chunk);
     }
-    output
+    (output, time::OffsetDateTime::now_utc() - start)
 }
 
 impl Application for DesApp {
@@ -83,6 +85,7 @@ impl Application for DesApp {
                 key_input: String::default(),
                 iv_input: String::default(),
                 theme: Theme::Dark,
+                encode_time: None,
                 error: (None, None, None),
             },
             Command::none(),
@@ -151,7 +154,10 @@ impl Application for DesApp {
                     }
                 }
             },
-            Message::EncodedTextComputed(cipher) => self.encoded = Some(cipher),
+            Message::EncodedTextComputed((cipher, time)) => {
+                self.encoded = Some(cipher);
+                self.encode_time = Some(time);
+            }
             Message::ChangeTheme => {
                 if self.theme == Theme::Dark {
                     self.theme = Theme::Light;
@@ -180,7 +186,7 @@ impl Application for DesApp {
 
     fn view(&self) -> Element<'_, Self::Message> {
         let inputs = row![
-            horizontal_space(Length::FillPortion(1)),
+            Space::with_width(Length::FillPortion(1)),
             column![
                 text_input("Input text", &self.cipher_input)
                     .on_input(|input| {
@@ -208,7 +214,7 @@ impl Application for DesApp {
                     .size(24),
             ]
             .width(Length::FillPortion(6)),
-            horizontal_space(Length::FillPortion(1))
+            Space::with_width(Length::FillPortion(1))
         ]
         .align_items(Alignment::Center)
         .spacing(10);
@@ -237,6 +243,10 @@ impl Application for DesApp {
         if let Some(encoded) = &self.encoded {
             encoded_button_value = encoded.to_upper_hex();
         }
+        if let Some(time) = &self.encode_time {
+            outputs = outputs
+                .push(text(format!("Encrypted in {} µs", time.whole_microseconds())).size(20))
+        }
         outputs = outputs.push(
             text_input(
                 "Encoded value will appear here",
@@ -245,9 +255,9 @@ impl Application for DesApp {
             .on_input(Message::Ignore),
         );
         let outputs = row![
-            horizontal_space(Length::FillPortion(1)),
+            Space::with_width(Length::FillPortion(1)),
             container(outputs).width(Length::FillPortion(6)),
-            horizontal_space(Length::FillPortion(1))
+            Space::with_width(Length::FillPortion(1))
         ];
 
         let content = column![

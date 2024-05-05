@@ -16,4 +16,5 @@ des-ndtp = { git = "https://github.com/Lapppse/des-ndtp.git" }
 
 bitvec = { git = "https://github.com/ferrilab/bitvec" }
 miette = { version = "7.0.0", features = ["fancy"] }
-iced = { git = "https://github.com/iced-rs/iced.git", features = ["debug", "tokio", "wgpu", "lazy"] }
+iced = { version = "0.12.1", features = ["debug", "tokio", "wgpu", "lazy"] }
+time = "0.3.36"
